@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<!---
+  Copyright 2009 Roman Nurik
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <title>EverRemind</title>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+    <script type="text/javascript" src="http://www.google.com/jsapi?key={% jsapi_key %}"></script>
+   
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/jquery-ui.min.js"></script> 
+    <script type="text/javascript" src="/static/lib/jquery.scrollTo-1.4.2-min.js"></script> 
+    <script type="text/javascript" src="/static/lib/microtemplate.js"></script> 
+    <script type="text/javascript" src="/static/js/frontV3.js"></script> 
+    <script type="text/javascript" src="/static/js/calendar.js"></script> 
+    <script type="text/javascript" src="/static/js/custom-form-elements.js"></script> 
+<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script> 
+<script type="text/javascript" src="http://www.google.com/jsapi"></script> 
+    <script type="text/javascript">
+    // load the Google data JS Client Library
+google.load('gdata', '2.x');
+ 
+// This is the url for the user's default calendar
+var EVENT_FEED_URL =
+    'https://www.google.com/calendar/feeds/default/private/full';
+var noteresults;
+// This variable is used for retrieving and adding events
+var calendarService;
+window.onload = Custom.init;
+      /**
+ * This function checks if the user is logged in, 
+ * and changes the login button and displayed sections accordingly.
+ * It also initializes the calendarService variable
+ * and calls a function to fill in the form based on the URL.
+ */
+function init() {
+ 
+  var token = google.accounts.user.checkLogin(EVENT_FEED_URL);
+ 
+  
+ 
+ 
+  var authButton = document.getElementById('auth_button');
+ 
+  if (google.accounts.user.checkLogin(EVENT_FEED_URL)) {
+    authButton.value = 'Logout';
+	  
+	calendarService = new google.gdata.calendar.CalendarService('evernote-remind');
+ 
+    //document.getElementById('upcomingBirthdays').style.display = 'block';
+   // document.getElementById('save_button').style.display = 'block';
+    //getEvents();
+  } else {
+    document.getElementById('loginNotice').style.display = 'block';
+    authButton.value = 'Login';
+  }
+};
+ 
+// Tells the google JS lib to call the init function once loaded
+google.setOnLoadCallback(init);
+  var callback = function (result) {
+			//document.getElementById('panel').innerHTML =  "event created"
+}
+
+		var handleError = function (error) {
+			//document.getElementById('panel').innerHTML =  "event not created"
+}
+      
+      function getDone() {
+            var searchParameters = {
+            type: $('#querytype').val()
+          };
+		
+          
+          // Perform proximity or bounds search.
+          var startTime = new Date().getTime();
+            $.ajax({
+            url: '/s/getDone',
+            type: 'get',
+            data: searchParameters,
+            dataType: 'json',
+             
+            error: function(xhr, textStatus) {
+              alert(xhr.responseText)
+              var responseTime = new Date().getTime() - startTime;
+              //alert( xhr.responseText);
+              var responseObj;
+              eval('responseObj=' + xhr.responseText);
+              alert(textStatus);
+              logResult(options, {
+                error: 'Internal error: ' + responseObj.error.message,
+                responseTime: responseTime
+              });
+            },
+            success: function(obj) {
+			  
+             // alert(xhr.responseText)
+              var responseTime = new Date().getTime() - startTime;
+              clearResults();
+              if (obj.status && obj.status == 'success') {
+			     noteresults = obj.results;
+                for (var key in obj.results){
+               
+                logResult(searchParameters, {
+                  title: obj.results[key].title,
+                  created: EpochToHuman(obj.results[key].created)
+                });
+              }
+              } else {
+                logResult(searchParameters, {
+                  error: 'Internal error: ' + obj.error.message,
+                  responseTime: responseTime
+                });
+              }
+            }
+          });
+      }
+      
+      function runCustomTest() {
+        
+        runTest({
+          tag: $('#tag').val(),
+          type: $('#querytype').val()
+        });
+      }
+      
+	  function addReminder() {
+	
+	document.getElementById('panel').innerHTML =  "reminder adding"
+	  var feedUri = 'http://www.google.com/calendar/feeds/default/private/full'; 
+
+var title = 'test'; 
+var where = 'here'; 
+var content = 'blah'; 
+var startTime = '2011-07-18T18:00:00.000Z'; 
+var endTime = '2011-07-18T19:00:00.000Z'; 
+var reminder = new google.gdata.Reminder();
+
+// Set the reminder to be 30 minutes prior the event start time
+reminder.setMinutes($('#minutes').val());
+
+// Set the reminder method to be 'alert', a pop up alert on the browser
+reminder.setMethod(google.gdata.Reminder.METHOD_ALERT);
+
+var newEvent = new google.gdata.calendar.CalendarEventEntry({ 
+  title: {type: 'text', text: title}, 
+  content: {type: 'text', text: content}, 
+  locations: [ 
+    { 
+      rel: 'g.event', 
+      label: 'Event location', 
+      valueString: where 
+    }], 
+  times: [ 
+    { 
+      startTime: 
+          google.gdata.DateTime.fromIso8601(startTime), 
+      endTime: 
+          google.gdata.DateTime.fromIso8601(endTime) 
+    }] 
+  } 
+); 
+newEvent.addReminder({minutes: $('#minutes').val(), method: google.gdata.Reminder.METHOD_EMAIL});
+calendarService.getEventsFeed( 
+  feedUri, 
+  function(root) { 
+    root.feed.insertEntry( 
+      newEvent, 
+      function(root) { 
+        alert('event is inserted!'); 
+      }, 
+      handleError 
+    ); 
+  }, 
+  handleError 
+); 
+document.getElementById('panel').innerHTML =  "reminder added"
+	  
+	  
+	  }
+      function EpochToHuman(epochseconds){
+         var inputtext = (epochseconds);
+         var outputtext = "";
+         var extraInfo = 0;
+          if(inputtext > 1000000000000){
+              outputtext += "<b>Assuming that this timestamp is in milliseconds:</b><br/>"; 
+          }else{
+          if(inputtext > 10000000000)extraInfo=1;
+            inputtext=(inputtext*1000);
+          }
+         var datum = new Date(inputtext);
+          outputtext += "<b>GMT</b>: "+datum.toGMTString()+"<br/><b>Your timezone</b>: "+datum.toLocaleString()+"<hr class=\"lefthr\">";
+         
+          return datum.toLocaleString();
+          }
+      
+      function getTodo() {
+          clearResults();
+          var searchParameters = {
+            type: $('#querytype').val()
+          };
+
+          
+          // Perform proximity or bounds search.
+          var startTime = new Date().getTime();
+         
+          $.ajax({
+            url: '/s/getTodo',
+            type: 'get',
+            data: searchParameters,
+            dataType: 'json',
+            error: function(xhr, textStatus) {
+              alert(xhr.responseText)
+              var responseTime = new Date().getTime() - startTime;
+           
+              var responseObj;
+              eval('responseObj=' + xhr.responseText);
+              
+              logResult(options, {
+                error: 'Internal error: ' + responseObj.error.message,
+                responseTime: responseTime
+              });
+            },
+            success: function(obj) {
+             
+              var responseTime = new Date().getTime() - startTime;
+              
+              if (obj.status && obj.status == 'success') {
+                logResult(options, {
+                  message: obj.results.length.toString(),
+                  responseTime: responseTime
+                });
+              } else {
+                logResult(options, {
+                  error: 'Internal error: ' + obj.error.message,
+                  responseTime: responseTime
+                });
+              }
+            }
+          });
+              
+      }
+      
+      function clearResults() {
+        $('tr.result').remove();
+      }
+      
+      function logResult(options, result) {
+        var paramStr = '<pre>';
+        for (var key in options) {
+          paramStr += key + ': <strong>' + options[key].toString() +
+                      '</strong><br>';
+        }
+        paramStr += '</pre>';
+        
+        var row = $('<tr class="result">')
+            .append($('<td>').html(paramStr))
+            .appendTo($('#results'));
+        
+        if (result.error) {
+          row
+            .addClass('error')
+            .append($('<td>').text(result.error));
+        } else {
+          row
+            .append($('<td>').text(result.title));
+        }
+        
+        row.append($('<td>').html('<span style="color:blue">' +
+                                  result.created + '</span>'));
+                                  
+      //  row.append($('<td>').html('<input type="checkbox" value="yes" checked="checked" class="styled"'));
+      }
+      
+      /**
+       * Helper method to update one object's properties with another's.
+       */
+      function updateObject(dest, src) {
+        dest = dest || {};
+        src = src || {};
+
+        for (var k in src)
+          dest[k] = src[k];
+
+        return dest;
+      }
+    </script>
+    <style type="text/css">
+      #results {
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      
+      #results td pre {
+        margin: 0;
+        padding: 0;
+      }
+      
+      #results th, #results td {
+        border: 1px solid #00AA33;
+        padding: 2px 4px;
+        vertical-align: top;
+      }
+      
+      #results th {
+        background-color: #FF4500;
+        color:#FFFFFF;
+      }
+      
+      #results tr.error {
+        color: #f00;
+      }
+    </style>
+  </head>
+  <body>
+     
+    <h1>Evernote Reminder</h1>
+   <div id="login-bar">
+      {% if current_user %}
+        <strong>{{ current_user.email }}</strong>
+        &nbsp;|&nbsp;
+        <a href="{% logout_url %}">Sign out</a>
+      {% else %}
+        <a href="{% login_url %}">Sign in</a>
+      {% endif %}
+    </div>
+    <hr>
+      <p><strong>Todo list filter:</strong></p>
+      
+      <p>Remind cache in minutes:
+      <input id="minutes" value="30" style="width: 200px;"/>
+      
+      <br>Query type:
+      <select id="querytype">
+        <option value="Todo" selected="selected">Still need to do</option>
+        <option value="Done">Already done</option>
+      </select>
+       <div id="panel">
+
+      <div align="left"><i></i></div>
+
+    </div>
+
+     
+      
+    <hr>
+    <input type="button" onclick="getDone();" value="Get Todo list"/>
+    <input type="button" onclick="clearResults();" value="Clear"/>
+    
+    <table id="results">
+      <tr style="color=#FFFFFF">
+        <th>Todo status</th>
+        <th>Note title</th>
+        <th>Created time</th>
+      </tr>
+    </table>
+    
+    <div class="indent"> 
+<input id="auth_button" type="button" value="Authenticate" onclick="loginOrLogout()"/> 
+</div> 
+    <td> 
+    <input id="save_button" type="button" value="Add reminders to Google Calendar" onclick="addReminder()" style="margin:5px 0px 5px 0px;"/> 
+       </td> 
+  <div id="addBirthday" class="indent" style="display:none"> 
+<div id="addEventHeader" style="font-weight: bold; border-bottom:1px solid grey;">Add reminder:</div> 
+    <table> 
+      <tr> 
+        <td>Name:</td> 
+        <td><input id="name" type="text" style="width:100%"></td> 
+      </tr> 
+      <tr> 
+        <td>Time:</td> 
+        <td><input id="birthdate" type="text" value="2007-08-16" style="width:100%"/></td> 
+      </tr> 
+      <tr> 
+        <td>Reminder:</td> 
+        <td><input id="reminder_days1" type="checkbox"/>1 day
+        <input id="reminder_days2" type="checkbox"/>2 days
+        <input id="reminder_days7" type="checkbox" checked/>1 week</td> 
+      </tr> 
+      <tr> 
+        <td>Profile Url:</td> 
+        <td><input id="profile" type="text" style="width:100%"/> 
+        </td> 
+      </tr> 
+      <tr> 
+        <td>Image:</td> 
+        <td><input id="image" type="text" style="width:100%" onkeyup="refreshImage()" onkeydown="refreshImage()"/> 
+        </td> 
+      </tr> 
+      <tr> 
+        <td></td> 
+        <td> 
+          <div id="imagePreview"></div> 
+        </td> 
+      </tr> 
+      <tr> 
+       <td></td> 
+       <td> 
+    <input id="save_button" type="button" value="Add reminders to Google Calendar" onclick="addReminder()" style="margin:5px 0px 5px 0px;"/> 
+       </td> 
+      </tr> 
+    </table> 
+</div> 
+ 
+<div id="upcomingBirthdays" class="indent" style="display:none"> 
+<div id="upcomingBirthdaysHeader" style="font-weight: bold; border-bottom:1px solid grey;">Upcoming Birthdays:</div> 
+<div id="upcomingBirthdaysContent"></div> 
+</div> 
+  </body>
+</html>
