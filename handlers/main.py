@@ -47,8 +47,8 @@ def make_static_handler(template_file):
 def main():
   application = webapp.WSGIApplication([
       ('/HandsUp', make_static_handler('../templates/HandsUp.html')),
-      ('/', make_static_handler('../templates/html5example.html')),
-      ('/dragMarker', make_static_handler('../templates/dragMarker.html')),
+      ('/', make_static_handler('../templates/fblogin.html')),
+      ('/fblogin', make_static_handler('../templates/fblogin.html')),
       ('/v2', make_static_handler('../templates/index.html')),
       ],
       debug=('Development' in os.environ['SERVER_SOFTWARE']))
